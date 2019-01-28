@@ -4,6 +4,7 @@ from telegram.ext import CommandHandler, ConversationHandler, MessageHandler
 import requests
 from bs4 import BeautifulSoup
 
+
 def 네이버_실시간_검색어():
     url = 'http://naver.com'
     응답 = requests.get(url)
@@ -39,8 +40,9 @@ def echo(bot, update):
         keyword_list = 네이버_실시간_검색어()
         response = '\n'.join(keyword_list)
 
-    elif text.startswith('네이버에서 찾아줘:'):
-        검색어 = text[10:]
+    elif text.startswith('네이버:'):
+        검색어 = text[4:]
+        포스트_리스트 = 네이버_블로그_검색(검색어)  # 개별: url, title
         # TODO: 네이버에서 검색결과를 찾을 수 있어요. !!!
         response = '검색결과가 없습니다.'
 
