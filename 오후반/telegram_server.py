@@ -1,7 +1,36 @@
+from telegram import ParseMode
 from telegram.ext import Updater, Filters
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler
 import requests
 from bs4 import BeautifulSoup
+from jinja2 import Template
+
+
+def 네이버_블로그_검색(검색어):
+    url = 'https://search.naver.com/search.naver'
+
+    params = {
+        'where': 'post',
+        'sm': 'tab_jum',
+        'query': 검색어,
+    }
+    
+    res = requests.get(url, params=params)
+    html = res.text
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    tag_list = soup.select('#elThumbnailResultArea .sh_blog_title')
+    
+    post_list = []
+    for tag in tag_list:
+        post_url = tag['href']
+        post_title = tag.text
+        post_list.append({
+            'url': post_url,
+            'title': post_title,
+        })
+    
+    return post_list
 
 
 def 네이버_실시간_검색어():
@@ -16,7 +45,7 @@ def 네이버_실시간_검색어():
     for tag in tag_list:
         keyword_list.append(tag.text)
     return keyword_list
-\
+
 
 def 단어수_세기(문자열):
     return len(문자열.split())
@@ -43,10 +72,25 @@ def echo(bot, update):
     text = update.message.text
 
     try:
-        if text.startswith('네이버:'):
-            검색어 = text[4:]
-            검색어
-            response = '....'  # TODO: 구현하기
+        if text.startswith('네이버 블로그 검색:'):
+            검색어 = text[11:]
+            post_list = 네이버_블로그_검색(검색어)
+            
+            # 타입 1
+            # message_list = []
+            # for post in post_list:
+            #     # message = '{}\n{}'.format(post['title'], post['url'])
+            #     message = '{title}\n{url}'.format(**post)
+            #     message_list.append(message)
+            # response = '\n\n'.join(message_list)
+
+            # 타입 2
+            template = Template('''검색어 "{{ 검색어 }}"에 대한 검색결과
+
+{% for post in post_list -%}
+<a href="{{ post.url }}">{{ post.title }}</a>
+{% endfor %}''')
+            response = template.render(검색어=검색어, post_list=post_list)
 
         elif text == '네이버 실검':
             검색어_리스트 = 네이버_실시간_검색어()
@@ -76,7 +120,7 @@ def echo(bot, update):
     except Exception as e:
         response = str(e)
 
-    bot.send_message(chat_id=chat_id, text=response)
+    bot.send_message(chat_id=chat_id, text=response, parse_mode=ParseMode.HTML)
 
 
 def main(token):
