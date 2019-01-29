@@ -4,6 +4,8 @@ from telegram.ext import CommandHandler, ConversationHandler, MessageHandler
 import requests
 from bs4 import BeautifulSoup
 
+from jinja2 import Template
+
 
 def 네이버_실시간_검색어():
     url = 'http://naver.com'
@@ -19,6 +21,33 @@ def 네이버_실시간_검색어():
         keyword_list.append(tag.text)
 
     return keyword_list
+
+
+def 네이버_블로그_검색(검색어):
+    url = 'https://search.naver.com/search.naver'
+
+    params = {
+        'where': 'post',
+        'sm': 'tab_jum',
+        'query': 검색어,
+    }
+
+    res = requests.get(url, params=params)
+    html = res.text
+    soup = BeautifulSoup(html, 'html.parser')
+
+    tag_list = soup.select('#elThumbnailResultArea .sh_blog_title')
+
+    post_list = []
+    for tag in tag_list:
+        post_title = tag.text
+        post_url = tag['href']
+        post_list.append({
+            'title': post_title,
+            'url': post_url,
+        })
+
+    return post_list
 
 
 def start(bot, update):
@@ -42,9 +71,23 @@ def echo(bot, update):
 
     elif text.startswith('네이버:'):
         검색어 = text[4:]
-        포스트_리스트 = 네이버_블로그_검색(검색어)  # 개별: url, title
-        # TODO: 네이버에서 검색결과를 찾을 수 있어요. !!!
-        response = '검색결과가 없습니다.'
+        post_list = 네이버_블로그_검색(검색어)  # 개별: url, title
+
+        # 버전 1
+        # message_list = []
+        # for post in post_list:
+        #     # lines = '{}\n{}'.format(post['title'], post['url'])
+        #     message = '{title}\n{url}'.format(**post)
+        #     message_list.append(message)
+        # response = '\n\n'.join(message_list)
+
+        # 버전 2
+        template = Template('''{{ 검색어 }} 검색결과
+{% for post in post_list %}
+{{ post.title }}
+{{ post.url }}
+{% endfor %}''')
+        response = template.render(검색어=검색어, post_list=post_list)
 
     elif text == '야':
         response = '왜?'

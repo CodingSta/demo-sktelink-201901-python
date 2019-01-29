@@ -43,7 +43,12 @@ def echo(bot, update):
     text = update.message.text
 
     try:
-        if text == '네이버 실검':
+        if text.startswith('네이버:'):
+            검색어 = text[4:]
+            검색어
+            response = '....'  # TODO: 구현하기
+
+        elif text == '네이버 실검':
             검색어_리스트 = 네이버_실시간_검색어()
             rank = 1
             message_list = []
@@ -62,9 +67,6 @@ def echo(bot, update):
             문자열 = text[8:]
             글자수 = 글자수_세기(문자열)
             response = '글자는 {}개입니다.'.format(글자수)
-
-        elif text == '네이버 실검':
-            response = 'TODO: 아직 지원하지 않는 기능입니다.'
 
         elif text == '야':
             response = '왜?'
