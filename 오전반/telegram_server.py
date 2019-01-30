@@ -1,3 +1,5 @@
+import re
+
 from telegram.ext import Updater, Filters
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler
 
@@ -60,7 +62,20 @@ def echo(bot, update):
     chat_id = update.message.chat_id
     text = update.message.text
 
-    if text.startswith('단어수 세어줘:'):
+    네이버_검색_패턴 = r"네이버에서(.+)찾아"
+
+    matched = re.match(네이버_검색_패턴, text)
+    if matched:
+        검색어 = matched.group(1)
+        post_list = 네이버_블로그_검색(검색어)  # 개별: url, title
+        message_list = []
+        for post in post_list:
+            # lines = '{}\n{}'.format(post['title'], post['url'])
+            message = '{title}\n{url}'.format(**post)
+            message_list.append(message)
+        response = '\n\n'.join(message_list)
+
+    elif text.startswith('단어수 세어줘:'):
         문자열 = text[8:]
         단어수 = len(문자열.split())  # int 타입
         response = '단어수는 {}개입니다.'.format(단어수)
@@ -121,4 +136,3 @@ if __name__ == '__main__':
     # FIXME: 각자의 Token을 적용해주세요.
     TOKEN = "*********************************************"
     main(TOKEN)
-
