@@ -1,65 +1,8 @@
-import re
 from telegram import ParseMode
 from telegram.ext import Updater, Filters
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler
-import requests
-from bs4 import BeautifulSoup
-from jinja2 import Template
 
-
-def 네이버_블로그_검색(검색어):
-    url = 'https://search.naver.com/search.naver'
-
-    params = {
-        'where': 'post',
-        'sm': 'tab_jum',
-        'query': 검색어,
-    }
-    
-    res = requests.get(url, params=params)
-    html = res.text
-    soup = BeautifulSoup(html, 'html.parser')
-    
-    tag_list = soup.select('#elThumbnailResultArea .sh_blog_title')
-    
-    post_list = []
-    for tag in tag_list:
-        post_url = tag['href']
-        post_title = tag.text
-        post_list.append({
-            'url': post_url,
-            'title': post_title,
-        })
-    
-    return post_list
-
-
-def 네이버_실시간_검색어():
-    url = 'http://naver.com'
-    응답 = requests.get(url)
-    html = 응답.text
-
-    soup = BeautifulSoup(html, 'html.parser')
-    tag_list = soup.select('.PM_CL_realtimeKeyword_rolling .ah_k')
-
-    keyword_list = []
-    for tag in tag_list:
-        keyword_list.append(tag.text)
-    return keyword_list
-
-
-def 단어수_세기(문자열):
-    return len(문자열.split())
-
-
-def 글자수_세기(문자열):
-    글자수 = 0
-    for 한글자 in 문자열:
-        # if 한글자 != ' ':
-        # if 한글자 != ' ' and 한글자 != '\n' and 한글자 != '\r' and 한글자 != '\t':
-        if 한글자 not in [' ', '\n', '\r', '\t']:
-            글자수 += 1
-    return 글자수
+from sktelinklibs import tasks
 
 
 def start(bot, update):
@@ -72,69 +15,36 @@ def echo(bot, update):
     chat_id = update.message.chat_id
     text = update.message.text
 
+    # 아직 동작하지 않는 코드
+    # task_class_list = []
+    # for task in dir(tasks):
+    #     try:
+    #         if issubclass(tasks.BaseTask, task):
+    #             print("!!!", task)
+    #             task_class_list.append(task)
+    #     except TypeError:
+    #         pass
+
+    TASK_CLASS_LIST = [
+        tasks.야,
+        tasks.단어수_세기,
+        tasks.글자수_세기,
+        tasks.네이버_실검,
+        tasks.네이버_검색,
+    ]
+
     try:
-        네이버_검색_패턴 = r"네이버에서(.+)찾아"
-
-        matched = re.match(네이버_검색_패턴, text)
-        if matched:
-            검색어 = matched.group(1)
-            post_list = 네이버_블로그_검색(검색어)
-            message_list = []
-            for post in post_list:
-                # message = '{}\n{}'.format(post['title'], post['url'])
-                message = '{title}\n{url}'.format(**post)
-                message_list.append(message)
-            response = '\n\n'.join(message_list)
-
-        elif text.startswith('네이버 블로그 검색:'):
-            검색어 = text[11:]
-            post_list = 네이버_블로그_검색(검색어)
-            
-            # 타입 1
-            # message_list = []
-            # for post in post_list:
-            #     # message = '{}\n{}'.format(post['title'], post['url'])
-            #     message = '{title}\n{url}'.format(**post)
-            #     message_list.append(message)
-            # response = '\n\n'.join(message_list)
-
-            # 타입 2
-            template = Template('''검색어 "{{ 검색어 }}"에 대한 검색결과
-
-{% for post in post_list -%}
-<a href="{{ post.url }}">{{ post.title }}</a>
-{% endfor %}''')
-            response = template.render(검색어=검색어, post_list=post_list)
-
-        elif text == '네이버 실검':
-            검색어_리스트 = 네이버_실시간_검색어()
-            rank = 1
-            message_list = []
-            for 검색어 in 검색어_리스트:
-                message = '{} {}'.format(rank, 검색어)
-                message_list.append(message)
-                rank += 1
-            response = '\n'.join(message_list)
-
-        elif text.startswith('단어수 세어줘:'):
-            문자열 = text[8:]
-            단어수 = 단어수_세기(문자열)
-            response = '단어는 {}개입니다.'.format(단어수)
-
-        elif text.startswith('글자수 세어줘:'):
-            문자열 = text[8:]
-            글자수 = 글자수_세기(문자열)
-            response = '글자는 {}개입니다.'.format(글자수)
-
-        elif text == '야':
-            response = '왜?'
-
-        else:
+        for task_class in TASK_CLASS_LIST:
+            task = task_class(text)
+            if task.is_matched():
+                response = task.make_response()
+                break
+        else:  # 현재 루프가 break없이 마지막까지 돌았을 때
             response = '니가 무슨 말 하는 지 모르겠어. :('
     except Exception as e:
         response = str(e)
 
-    bot.send_message(chat_id=chat_id, text=response, parse_mode=ParseMode.HTML)
+    bot.send_message(chat_id=chat_id, text=response)
 
 
 def main(token):
