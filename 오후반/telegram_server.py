@@ -1,3 +1,4 @@
+import re
 from telegram import ParseMode
 from telegram.ext import Updater, Filters
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler
@@ -72,7 +73,20 @@ def echo(bot, update):
     text = update.message.text
 
     try:
-        if text.startswith('네이버 블로그 검색:'):
+        네이버_검색_패턴 = r"네이버에서(.+)찾아"
+
+        matched = re.match(네이버_검색_패턴, text)
+        if matched:
+            검색어 = matched.group(1)
+            post_list = 네이버_블로그_검색(검색어)
+            message_list = []
+            for post in post_list:
+                # message = '{}\n{}'.format(post['title'], post['url'])
+                message = '{title}\n{url}'.format(**post)
+                message_list.append(message)
+            response = '\n\n'.join(message_list)
+
+        elif text.startswith('네이버 블로그 검색:'):
             검색어 = text[11:]
             post_list = 네이버_블로그_검색(검색어)
             
